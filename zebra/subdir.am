@@ -224,6 +224,12 @@ endif
 if DEV_BUILD
 zebra_dplane_sample_plugin_la_SOURCES = zebra/sample_plugin.c
 zebra_dplane_sample_plugin_la_LDFLAGS = $(MODULE_LDFLAGS)
+
+module_LTLIBRARIES += zebra/dplane_fpm_pb.la
+zebra_dplane_fpm_pb_la_SOURCES = zebra/dplane_fpm_pb.c
+zebra_dplane_fpm_pb_la_LDFLAGS = $(MODULE_LDFLAGS)
+
+
 endif
 
 nodist_zebra_zebra_SOURCES = \
