@@ -1,0 +1,25 @@
+#
+# fpmsyncd
+#
+
+if FPMSYNCD
+sbin_PROGRAMS += fpmsyncd/fpmsyncd
+# vtysh_daemons += fpmsyncd
+# endif FPMSYNCD
+endif
+#fpmsyncd_fpmsyncd_CXXFLAGS = -g -I/usr/include/libnl3
+#fpmsyncd_fpmsyncd_LDADD = lib/libfrr.la $(LIBCAP) $(UST_LIBS) -lnl-3
+fpmsyncd_fpmsyncd_CXXFLAGS = -g 
+fpmsyncd_fpmsyncd_LDADD = lib/libfrr.la $(LIBCAP) $(UST_LIBS) 
+
+fpmsyncd_fpmsyncd_SOURCES = \
+	fpmsyncd/main.cpp \
+	fpmsyncd/fpmsyncd.h \
+	fpmsyncd/fpmsyncd.cpp \
+	#fpmsyncd/process_msg.h \
+	#fpmsyncd/process_msg.cpp \
+	# end
+
+
+
+

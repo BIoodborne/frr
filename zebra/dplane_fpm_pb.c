@@ -3,11 +3,40 @@
  * buffer.
  */
 
-#include "config.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h" /* Include this explicitly */
+#endif
+
+#include <arpa/inet.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+
+#include <errno.h>
+#include <string.h>
+
 #include "lib/zebra.h"
+#include "lib/json.h"
 #include "lib/libfrr.h"
-#include "zebra/zebra_dplane.h"
+#include "lib/frratomic.h"
+#include "lib/command.h"
+#include "lib/memory.h"
+#include "lib/network.h"
+#include "lib/ns.h"
+#include "lib/frr_pthread.h"
 #include "zebra/debug.h"
+#include "zebra/interface.h"
+#include "zebra/zebra_dplane.h"
+#include "zebra/zebra_mpls.h"
+#include "zebra/zebra_router.h"
+#include "zebra/interface.h"
+#include "zebra/zebra_vxlan_private.h"
+#include "zebra/zebra_evpn.h"
+#include "zebra/zebra_evpn_mac.h"
+#include "zebra/kernel_netlink.h"
+#include "zebra/rt_netlink.h"
+#include "zebra/debug.h"
+#include "fpm/fpm.h"
 
 #define SOUTHBOUND_DEFAULT_PORT 2620
 static const char *prov_name = "dplane_fpm_pb";
@@ -134,8 +163,8 @@ static int fpm_connect(struct event *t)
 
 	rv = connect(sock, (struct sockaddr *)&fpc->addr, slen);
 	if (rv == -1 && errno != EINPROGRESS) {
-		atomic_fetch_add_explicit(&fpc->counters.connection_errors, 1,
-					  memory_order_relaxed);
+		// atomic_fetch_add_explicit(&fpc->counters.connection_errors, 1,
+		// 			  memory_order_relaxed);
 		close(sock);
 		zlog_warn("%s: fpm connection failed: %s", __func__,
 			  strerror(errno));
@@ -196,7 +225,7 @@ static int fpm_pb_start(struct zebra_dplane_provider *prov)
 	fpc->obuf = stream_new(NL_PKT_BUF_SIZE * 128);
 	pthread_mutex_init(&fpc->obuf_mutex, NULL);
 	fpc->socket = -1;
-	// fpc->disabled = true;
+	fpc->disabled = true;
 	fpc->prov = prov;
 	dplane_ctx_q_init(&fpc->ctxqueue);
 	pthread_mutex_init(&fpc->ctxqueue_mutex, NULL);
@@ -227,10 +256,10 @@ static int fpm_pb_new(struct event_loop *tm)
 {
 	struct zebra_dplane_provider *prov = NULL;
 	int rv;
-
+	gfpc = calloc(1, sizeof(*gfpc));
 	rv = dplane_provider_register(prov_name, DPLANE_PRIO_POSTPROCESS,
 				      DPLANE_PROV_FLAG_THREADED, fpm_pb_start,
-				      fpm_pr_process, NULL, NULL, &prov);
+				      fpm_pb_process, NULL, gfpc, &prov);
 
 	if (IS_ZEBRA_DEBUG_DPLANE)
 		zlog_debug("%s register status: %d", prov_name, rv);
@@ -246,4 +275,4 @@ static int fpm_pb_init(void)
 FRR_MODULE_SETUP(.name = "dplane_fpm_pb", .version = "0.0.1",
 		 .description =
 			 "Data plane plugin for FPM using protocol buffer.",
-		 .init = fpm_pr_init, );
+		 .init = fpm_pb_init, );

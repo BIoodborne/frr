@@ -62,6 +62,9 @@ RUN cd ~/frr && \
        --enable-user=frr \
        --enable-group=frr \
        --enable-vty-group=frrvty \
+       --enable-dev-build \
+       --enable-fpm \
+       --enable-fpmsyncd \
        --enable-snmp=agentx \
        --with-pkg-extra-version=-my-manual-build && \
     make -j $(nproc) && \
