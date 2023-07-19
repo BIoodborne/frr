@@ -11,7 +11,14 @@ struct Fpmsyncd_meta_data fpmsyncd_meta_data = {.m_bufSize = 2048,
 						.m_server_up = false};
 char *output_file_path = NULL;
 
+void process_fpm_msg(fpm_msg_hdr_t *fpm_hdr){
+	size_t msg_len = fpm_msg_len(fpm_hdr);
 
+
+	// move point to beginning of netlink message
+	char *test_msg = (char *)fpm_msg_data(fpm_hdr);
+	zlog_info("[process_fpm_msg] msg data:%s,size:%lu,all size:%lu\n",test_msg,sizeof(test_msg),msg_len);
+}
 
 int fpmsyncd_init()
 {
@@ -110,7 +117,7 @@ int fpmsyncd_read_data()
 		}
 
 
-		// process_fpm_msg(fpm_hdr);
+		process_fpm_msg(fpm_hdr);
 
 		start += msg_len;
 	}
