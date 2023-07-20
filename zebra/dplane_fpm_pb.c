@@ -103,6 +103,7 @@ enum fpm_pb_events {
 	FNE_RECONNECT,
 	/* Disable FPM. */
 	FNE_DISABLE,
+	FNE_INTERNAL_RECONNECT,
 };
 
 #define FPM_RECONNECT(fpc)                                                     \
@@ -115,6 +116,13 @@ enum fpm_pb_events {
 
 static void fpm_reconnect(struct fpm_pb_ctx *fpc);
 static int fpm_connect(struct event *t);
+static void fpm_process_event(struct event *t);
+static void fpm_process_queue(struct event *t);
+static int fpm_pb_process(struct zebra_dplane_provider *prov);
+static ssize_t protobuf_msg_encode(struct zebra_dplane_ctx *ctx, uint8_t *data,
+				   size_t datalen);
+static int fpm_pb_enqueue(struct fpm_pb_ctx *fpc, struct zebra_dplane_ctx *ctx);
+
 
 
 static void fpm_write(struct event *t)
@@ -234,6 +242,9 @@ static void fpm_process_event(struct event *t)
 		// 			  memory_order_relaxed);
 		fpm_reconnect(fpc);
 		break;
+	case FNE_INTERNAL_RECONNECT:
+		fpm_reconnect(fpc);
+		break;
 	}
 }
 
@@ -313,8 +324,8 @@ static int fpm_connect(struct event *t)
 	// if (!fpc->connecting)
 	// 	event_add_read(fpc->fthread->master, fpm_read, fpc, sock,
 	// 		       &fpc->t_read);
-	// event_add_write(fpc->fthread->master, fpm_write, fpc, sock,
-	// 		&fpc->t_write);
+	event_add_write(fpc->fthread->master, fpm_write, fpc, sock,
+			&fpc->t_write);
 	zlog_info("fpm_pb connect success\n");
 }
 
@@ -336,12 +347,15 @@ static int fpm_pb_process(struct zebra_dplane_provider *prov)
 		ctx = dplane_provider_dequeue_in_ctx(prov);
 		if (ctx == NULL)
 			break;
+		zlog_info("[fpm_pb_process] ctx success\n");
 
 		/*
 		 * Skip all notifications if not connected, we'll walk the RIB
 		 * anyway.
 		 */
+		
 		if (fpc->socket != -1 && fpc->connecting == false) {
+			
 			/*
 			 * Update the number of queued contexts *before*
 			 * enqueueing, to ensure counter consistency.
@@ -392,7 +406,7 @@ static void fpm_process_queue(struct event *t)
 	struct zebra_dplane_ctx *ctx;
 	bool no_bufs = false;
 	uint64_t processed_contexts = 0;
-
+	
 	while (true) {
 		/* No space available yet. */
 		if (STREAM_WRITEABLE(fpc->obuf) < NL_PKT_BUF_SIZE) {
@@ -413,7 +427,7 @@ static void fpm_process_queue(struct event *t)
 		 * the output data in the STREAM_WRITEABLE
 		 * check above, so we can ignore the return
 		 */
-		zlog_info("[fpm_process_queue] start\n")
+		zlog_info("[fpm_process_queue] start\n");
 		if (fpc->socket != -1)
 			(void)fpm_pb_enqueue(fpc, ctx);
 
@@ -445,7 +459,7 @@ static void fpm_process_queue(struct event *t)
 		dplane_provider_work_ready();
 }
 
-static ssize_t protobuf_msg_encode(zebra_dplane_ctx *ctx, uint8_t *data,
+static ssize_t protobuf_msg_encode(struct zebra_dplane_ctx *ctx, uint8_t *data,
 				   size_t datalen)
 {
 	char test_msg[100];
@@ -468,7 +482,7 @@ static int fpm_pb_enqueue(struct fpm_pb_ctx *fpc, struct zebra_dplane_ctx *ctx)
 
 	pb_buf_len = 0;
 	frr_mutex_lock_autounlock(&fpc->obuf_mutex);
-
+	zlog_info("[fpm_pb_enqueue] start\n");
 	// TODO:write obuffer
 	pb_buf_len = protobuf_msg_encode(ctx, pb_buf, sizeof(pb_buf));
 

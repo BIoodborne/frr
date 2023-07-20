@@ -806,6 +806,7 @@ static int fpm_nl_enqueue(struct fpm_nl_ctx *fnc, struct zebra_dplane_ctx *ctx)
 
 	frr_mutex_lock_autounlock(&fnc->obuf_mutex);
 
+	zlog_info("[fpm_nl_enqueue] op is %d\n",op);
 	switch (op) {
 	case DPLANE_OP_ROUTE_UPDATE:
 	case DPLANE_OP_ROUTE_DELETE:
@@ -1536,7 +1537,7 @@ static int fpm_nl_process(struct zebra_dplane_provider *prov)
 		ctx = dplane_provider_dequeue_in_ctx(prov);
 		if (ctx == NULL)
 			break;
-
+		zlog_info("[fpm_nl_process]success\n");
 		/*
 		 * Skip all notifications if not connected, we'll walk the RIB
 		 * anyway.
