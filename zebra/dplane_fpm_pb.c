@@ -21,6 +21,7 @@
 #include "lib/frratomic.h"
 #include "lib/command.h"
 #include "lib/memory.h"
+#include "lib/prefix.h"
 #include "lib/network.h"
 #include "lib/ns.h"
 #include "lib/frr_pthread.h"
@@ -37,6 +38,12 @@
 #include "zebra/rt_netlink.h"
 #include "zebra/debug.h"
 #include "fpm/fpm.h"
+
+#include "qpb/qpb.pb-c.h"
+#include "qpb/qpb.h"
+#include "qpb/qpb_allocator.h"
+#include "qpb/linear_allocator.h"
+#include "fpm/fpm_pb.h"
 
 #define SOUTHBOUND_DEFAULT_PORT 2620
 #define FPM_HEADER_SIZE 4
@@ -122,8 +129,8 @@ static int fpm_pb_process(struct zebra_dplane_provider *prov);
 static ssize_t protobuf_msg_encode(struct zebra_dplane_ctx *ctx, uint8_t *data,
 				   size_t datalen);
 static int fpm_pb_enqueue(struct fpm_pb_ctx *fpc, struct zebra_dplane_ctx *ctx);
-
-
+static Fpm__Message *create_route_message(qpb_allocator_t *allocator, struct zebra_dplane_ctx *ctx);
+static Fpm__AddRoute *create_add_route_message(qpb_allocator_t *allocator, struct zebra_dplane_ctx *ctx);
 
 static void fpm_write(struct event *t)
 {
@@ -326,7 +333,7 @@ static int fpm_connect(struct event *t)
 	// 		       &fpc->t_read);
 	event_add_write(fpc->fthread->master, fpm_write, fpc, sock,
 			&fpc->t_write);
-	zlog_info("fpm_pb connect success\n");
+	zlog_info("fpm_pb connect success");
 }
 
 static int fpm_pb_process(struct zebra_dplane_provider *prov)
@@ -347,7 +354,7 @@ static int fpm_pb_process(struct zebra_dplane_provider *prov)
 		ctx = dplane_provider_dequeue_in_ctx(prov);
 		if (ctx == NULL)
 			break;
-		zlog_info("[fpm_pb_process] ctx success\n");
+		zlog_info("[fpm_pb_process] ctx success");
 
 		/*
 		 * Skip all notifications if not connected, we'll walk the RIB
@@ -427,7 +434,7 @@ static void fpm_process_queue(struct event *t)
 		 * the output data in the STREAM_WRITEABLE
 		 * check above, so we can ignore the return
 		 */
-		zlog_info("[fpm_process_queue] start\n");
+		zlog_info("[fpm_process_queue] start");
 		if (fpc->socket != -1)
 			(void)fpm_pb_enqueue(fpc, ctx);
 
@@ -459,17 +466,98 @@ static void fpm_process_queue(struct event *t)
 		dplane_provider_work_ready();
 }
 
+static Fpm__Message *create_route_message(qpb_allocator_t *allocator,
+					  struct zebra_dplane_ctx *ctx)
+{
+	Fpm__Message *msg;
+
+	msg = QPB_ALLOC(allocator, typeof(*msg));
+	if (!msg) {
+		return NULL;
+	}
+
+	fpm__message__init(msg);
+
+	if (!ctx) {
+		msg->has_type = 1;
+		msg->type = FPM__MESSAGE__TYPE__UNKNOWN_MSG;
+		return msg;
+	}
+
+	msg->has_type = 1;
+	msg->type = FPM__MESSAGE__TYPE__ADD_ROUTE;
+	msg->add_route = create_add_route_message(allocator, ctx);
+	if (!msg->add_route) {
+		return NULL;
+	}
+
+	return msg;
+}
+
+static Fpm__AddRoute *create_add_route_message(qpb_allocator_t *allocator,
+					       struct zebra_dplane_ctx *ctx)
+{
+	Fpm__AddRoute *msg;
+	struct nexthop *nexthop;
+	const struct prefix *p;
+	uint num_nhs, u;
+	struct nexthop *nexthops[MULTIPATH_NUM];
+
+	msg = QPB_ALLOC(allocator, typeof(*msg));
+	if (!msg) return NULL;
+
+	p = dplane_ctx_get_dest(ctx);
+	if(!p) return NULL;
+
+	fpm__add_route__init(msg);
+	msg->vrf_id = dplane_ctx_get_vrf(ctx);
+	msg->address_family = p->family;
+	msg->metric = dplane_ctx_get_metric(ctx);
+	/*
+	 * XXX Hardcode subaddress family for now.
+	 */
+	msg->sub_address_family = QPB__SUB_ADDRESS_FAMILY__UNICAST;
+	msg->key = fpm_route_key_create(allocator, p);
+	// qpb_protocol_set(&msg->protocol, re->type);
+	msg->has_route_type = 1;
+	msg->route_type = FPM__ROUTE_TYPE__NORMAL;
+
+	return msg;
+}
+
 static ssize_t protobuf_msg_encode(struct zebra_dplane_ctx *ctx, uint8_t *data,
 				   size_t datalen)
 {
-	char test_msg[100];
-	struct{
-		char test_msg[100];
-	}*req=(void *)data;
-	char *test="helloworld";
-	strcpy(req->test_msg,test);
+    Fpm__Message *msg;
+	QPB_DECLARE_STACK_ALLOCATOR(allocator, 4096);
+	size_t len;
 
-	return sizeof(*req);
+	QPB_INIT_STACK_ALLOCATOR(allocator);
+
+	msg = create_route_message(&allocator, ctx);
+	if (!msg) {
+		zlog_info("[protobuf_msg_encode] msg create error");
+		return 0;
+	}
+	len = fpm__message__pack(msg, data);
+	if(len==0){
+		zlog_info("[protobuf_msg_encode] msg len == 0");
+	}
+	if (len > datalen){
+		zlog_info("[protobuf_msg_encode] msg exceed error");
+		return 0;
+	}
+
+	Fpm__Message *testmsg;
+	testmsg = fpm__message__unpack(NULL,len,data);
+	if(!testmsg){
+		zlog_info("[protobuf_msg_encode] test msg error");
+	}else{
+		zlog_info("[protobuf_msg_encode] data:%d",testmsg->type);
+	}
+
+	QPB_RESET_STACK_ALLOCATOR(allocator);
+	return len;
 }
 
 static int fpm_pb_enqueue(struct fpm_pb_ctx *fpc, struct zebra_dplane_ctx *ctx)
@@ -482,12 +570,15 @@ static int fpm_pb_enqueue(struct fpm_pb_ctx *fpc, struct zebra_dplane_ctx *ctx)
 
 	pb_buf_len = 0;
 	frr_mutex_lock_autounlock(&fpc->obuf_mutex);
-	zlog_info("[fpm_pb_enqueue] start\n");
+	zlog_info("[fpm_pb_enqueue] start");
 	// TODO:write obuffer
 	pb_buf_len = protobuf_msg_encode(ctx, pb_buf, sizeof(pb_buf));
 
-	if (pb_buf_len == 0)
+	if (pb_buf_len == 0){
+		zlog_info("[fpm_pb_enqueue] protobuf msg encode error");
 		return 0;
+	}
+		
 
 	/* We must know if someday a message goes beyond 65KiB. */
 	assert((pb_buf_len + FPM_HEADER_SIZE) <= UINT16_MAX);
@@ -559,7 +650,7 @@ static int fpm_pb_start(struct zebra_dplane_provider *prov)
 	uint8_t naddr[INET6_BUFSIZ];
 
 	if (inet_pton(AF_INET, "127.0.0.1", naddr) != 1) {
-		zlog_warn("Invalid address: %s\n", "127.0.0.1");
+		zlog_warn("Invalid address: %s", "127.0.0.1");
 		return -1;
 	}
 

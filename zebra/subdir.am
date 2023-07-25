@@ -248,7 +248,7 @@ module_LTLIBRARIES += zebra/dplane_fpm_pb.la
 
 zebra_dplane_fpm_pb_la_SOURCES = zebra/dplane_fpm_pb.c
 zebra_dplane_fpm_pb_la_LDFLAGS = $(MODULE_LDFLAGS)
-zebra_dplane_fpm_pb_la_LIBADD  =
+zebra_dplane_fpm_pb_la_LIBADD  = fpm/libfrrfpm_pb.la qpb/libfrr_pb.la $(PROTOBUF_C_LIBS)
 endif
 
 if NETLINK_DEBUG

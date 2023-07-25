@@ -66,6 +66,7 @@ RUN cd ~/frr && \
        --enable-fpm \
        --enable-fpmsyncd \
        --enable-snmp=agentx \
+       --enable-protobuf \
        --with-pkg-extra-version=-my-manual-build && \
     make -j $(nproc) && \
     sudo make install

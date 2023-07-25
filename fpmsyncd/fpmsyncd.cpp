@@ -1,7 +1,8 @@
 
 #include "fpmsyncd.h"
+#include "fpm/fpm.pb-c.h"
 
-
+#define FPM_HEADER_SIZE 4
 struct Fpmsyncd_meta_data fpmsyncd_meta_data = {.m_bufSize = 2048,
 						.m_messageBuffer = NULL,
 						.m_pos = 0,
@@ -13,11 +14,30 @@ char *output_file_path = NULL;
 
 void process_fpm_msg(fpm_msg_hdr_t *fpm_hdr){
 	size_t msg_len = fpm_msg_len(fpm_hdr);
-
-
+	Fpm__Message *msg;
+	msg = fpm__message__unpack(NULL, msg_len-FPM_HEADER_SIZE, (uint8_t *)fpm_msg_data(fpm_hdr));
+	if(!msg){
+		zlog_info("[process_fpm_msg] unpack error!");
+		return;
+	}else{
+		zlog_info("[process_fpm_msg] msg_type:%d",msg->type);
+		if(!msg->add_route){
+			zlog_info("[process_fpm_msg] add_route not exist");
+			return;
+		}
+		zlog_info("[process_fpm_msg] msg add_route data:\nvrf_id:%d\naddress_family:%d\nmetric:%d\nsub_address_family:%d\nhas_route_type:%d\nroute_type:%d\n",
+		         msg->add_route->vrf_id,msg->add_route->address_family,msg->add_route->metric,
+				 msg->add_route->sub_address_family,msg->add_route->has_route_type,msg->add_route->route_type);
+		if(!msg->add_route->key){
+			zlog_info("[process_fpm_msg] key not exist");
+		}else{
+			zlog_info("[process_fpm_msg] key exist");
+		}
+	}
+	
 	// move point to beginning of netlink message
-	char *test_msg = (char *)fpm_msg_data(fpm_hdr);
-	zlog_info("[process_fpm_msg] msg data:%s,size:%lu,all size:%lu\n",test_msg,sizeof(test_msg),msg_len);
+	// char *test_msg = (char *)fpm_msg_data(fpm_hdr);
+	// zlog_info("[process_fpm_msg] msg data:%s,size:%lu,all size:%lu\n",test_msg,sizeof(test_msg),msg_len);
 }
 
 int fpmsyncd_init()
