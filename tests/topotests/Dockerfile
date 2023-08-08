@@ -53,8 +53,15 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     && wget -qO- https://deb.frrouting.org/frr/keys.asc | apt-key add - \
     && echo "deb https://deb.frrouting.org/frr bionic frr-stable" > /etc/apt/sources.list.d/frr.list \
     && apt-get update \
-    && apt-get install -y libyang-dev \
+    && apt-get install -y libyang2-dev protobuf-c-compiler \
+        libprotobuf-c-dev\
     && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y \  
+        python3.8-dev \
+        python3-pip\
+&& update-alternatives --install /usr/bin/python python /usr/bin/python3.8 1 \
+&& pip install --upgrade pytest-dependency
 
 RUN groupadd -r -g 92 frr \
     && groupadd -r -g 85 frrvty \

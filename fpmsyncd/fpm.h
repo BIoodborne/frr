@@ -134,8 +134,14 @@ typedef enum fpm_msg_type_e_ {
 	/*
 	 * Indicates that the payload is a completely formed netlink
 	 * message.
+	 *
+	 * XXX Netlink cares about the alignment of messages. When any
+	 * FPM_MSG_TYPE_NETLINK messages are sent over a channel, then all
+	 * messages should be sized such that netlink alignment is
+	 * maintained.
 	 */
 	FPM_MSG_TYPE_NETLINK = 1,
+	FPM_MSG_TYPE_PROTOBUF = 2,
 } fpm_msg_type_e;
 
 /*
@@ -238,7 +244,11 @@ static inline int fpm_msg_hdr_ok(const fpm_msg_hdr_t *hdr)
 	if (msg_len < FPM_MSG_HDR_LEN || msg_len > FPM_MAX_MSG_LEN)
 		return 0;
 
-	if (fpm_msg_align(msg_len) != msg_len)
+	/*
+	 * Netlink messages must be aligned properly.
+	 */
+	if (hdr->msg_type == FPM_MSG_TYPE_NETLINK
+	    && fpm_msg_align(msg_len) != msg_len)
 		return 0;
 
 	return 1;
@@ -247,7 +257,7 @@ static inline int fpm_msg_hdr_ok(const fpm_msg_hdr_t *hdr)
 /*
  * fpm_msg_ok
  *
- * Returns TRUE if a message looks well-formed.
+ * Returns true if a message looks well-formed.
  *
  * @param len The length in bytes from 'hdr' to the end of the buffer.
  */
