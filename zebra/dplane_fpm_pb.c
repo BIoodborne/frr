@@ -652,8 +652,10 @@ static Fpm__Message *create_route_message(qpb_allocator_t *allocator,
 			msg->has_type = 1;
 			msg->type = FPM__MESSAGE__TYPE__ADD_ROUTE;
 			if (IS_ZEBRA_DEBUG_FPM){
-				zlog_debug("  fpm_pb message:\n  ==========");
-				zlog_debug("has_type: %d\ntype: %d",msg->has_type, msg->type);
+				zlog_debug("fpm_pb message:");
+				zlog_debug("==========");
+				zlog_debug("has_type: %d", msg->has_type);
+				zlog_debug("type: %d", msg->type);
 			}
 			msg->add_route = create_add_route_message(allocator, ctx);
 			if (!msg->add_route) {
@@ -751,10 +753,14 @@ static Fpm__AddRoute *create_add_route_message(qpb_allocator_t *allocator,
 	msg->route_type = FPM__ROUTE_TYPE__NORMAL;
 
 	if (IS_ZEBRA_DEBUG_FPM){
-		zlog_debug("  add route message:\n  ==========");
-		zlog_debug("vrf_id: %d\naddress_family: %d\nmetric: %d",msg->vrf_id, msg->address_family, msg->metric);
+		zlog_debug("add route message:");
+		zlog_debug("==========");
+		zlog_debug("vrf_id: %d",msg->vrf_id);
+		zlog_debug("address_family: %d",msg->address_family);
+		zlog_debug("metric:%d",msg->metric)
 		zlog_debug("sub_address_family: %d",msg->sub_address_family);
-		zlog_debug("has_router_type: %d\nroute_type: %d",msg->has_route_type, msg->route_type);
+		zlog_debug("has_router_type: %d",msg->has_route_type);
+		zlog_debug("route_type:%d",msg->route_type);
 	}	
 	return msg;
 }

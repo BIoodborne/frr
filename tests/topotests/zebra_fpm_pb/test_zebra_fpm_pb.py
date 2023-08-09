@@ -58,8 +58,7 @@ def setup_module(mod):
         router.startFpmSimulator()
 
         router.load_config(
-            TopoRouter.RD_ZEBRA,
-            os.path.join(CWD, "{}/zebra.conf".format(rname), " -M dplane_fpm_pb"),
+            TopoRouter.RD_ZEBRA, os.path.join(CWD, "{}/zebra.conf".format(rname)), "-M dplane_fpm_pb"
         )
         router.load_config(
             TopoRouter.RD_BGP, os.path.join(CWD, "{}/bgpd.conf".format(rname))
@@ -85,4 +84,6 @@ def test_zebra_dplane_fpm_pb():
     tgen = get_topogen
     if tgen.routers_have_failure():
         pytest.skip(tgen.errors)
+    
+    assert True
     

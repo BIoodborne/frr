@@ -13,8 +13,8 @@ fpmsyncd_fpmsyncd_SOURCES = \
 
 
 nodist_fpmsyncd_fpmsyncd_SOURCES = \
-	fpm/fpm.pb-c.c \
-	qpb/qpb.pb-c.c \
+	#fpm/fpm.pb-c.c \
+	#qpb/qpb.pb-c.c \
 	# end
 
 CLEANFILES += \
