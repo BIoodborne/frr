@@ -15,6 +15,7 @@
 #include "zlog.h"
 #include "libfrr.h"
 #include "fpm.h"
+#include "lib/json.h"
 #define MAX_CLIENTS 10
 #define BUFFER_SIZE 1024
 

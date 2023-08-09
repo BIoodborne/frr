@@ -757,7 +757,7 @@ static Fpm__AddRoute *create_add_route_message(qpb_allocator_t *allocator,
 		zlog_debug("==========");
 		zlog_debug("vrf_id: %d",msg->vrf_id);
 		zlog_debug("address_family: %d",msg->address_family);
-		zlog_debug("metric:%d",msg->metric)
+		zlog_debug("metric:%d",msg->metric);
 		zlog_debug("sub_address_family: %d",msg->sub_address_family);
 		zlog_debug("has_router_type: %d",msg->has_route_type);
 		zlog_debug("route_type:%d",msg->route_type);

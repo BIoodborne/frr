@@ -1087,8 +1087,9 @@ class TopoRouter(TopoGear):
         "Starts FRR FPM Simulator for this router."
         dir_path = f"{self.logdir}/{self.name}"
         log_path = f"{dir_path}/FpmSimulator.log" 
+        json_path = f"{dir_path}/output.json"
         self.cmd(f"mkdir -p {dir_path}")
-        run_cmd = f"/usr/lib/frr/fpmsyncd -d -f {dir_path} > {log_path}  2>&1 &"
+        run_cmd = f"/usr/lib/frr/fpmsyncd -f {json_path} -d > {log_path}  2>&1 &"
         try:
             self.cmd_raises(run_cmd, warn=False)
         except subprocess.CalledProcessError as error:

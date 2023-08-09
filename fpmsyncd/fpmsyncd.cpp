@@ -30,9 +30,40 @@ void process_fpm_msg(fpm_msg_hdr_t *fpm_hdr){
 				 msg->add_route->sub_address_family,msg->add_route->has_route_type,msg->add_route->route_type);
 		if(!msg->add_route->key){
 			zlog_info("[process_fpm_msg] key not exist");
+			return;
 		}else{
 			zlog_info("[process_fpm_msg] key exist");
 		}
+		char buf[20]={0};
+		inet_ntop(AF_INET,msg->add_route->key->prefix->bytes.data,buf,sizeof(buf));
+		zlog_info("[process_fpm_msg] key prefix:%s",buf);
+		zlog_info("[process_fpm_msg] key length:%d",msg->add_route->key->prefix->length);
+
+		json_object *json=json_object_new_object();
+		json_object_int_add(json,"msg_type",int64_t(msg->type));
+		if(msg->add_route){
+			json_object_int_add(json,"vrf_id",int64_t(msg->add_route->vrf_id));
+			json_object_int_add(json,"address_family",int64_t(msg->add_route->address_family));
+			json_object_int_add(json,"metric",int64_t(msg->add_route->metric));
+			json_object_int_add(json,"sub_address_family",int64_t(msg->add_route->sub_address_family));
+			json_object_int_add(json,"has_route_type",int64_t(msg->add_route->has_route_type));
+			json_object_int_add(json,"route_type",int64_t(msg->add_route->route_type));
+			if(msg->add_route->key){
+				json_object_string_add(json,"prefix",buf);
+				json_object_int_add(json,"prefix_length",int64_t(msg->add_route->key->prefix->length));
+			}
+		}
+		if(output_file_path){
+			FILE *fp=fopen(output_file_path,"a+");
+			if(!fp){
+				zlog_info("[process_fpm_msg] open file error file path :%s",output_file_path);
+			}else{
+				fprintf(fp,"%s\n",json_object_to_json_string_ext(json, JSON_C_TO_STRING_PRETTY));
+				fclose(fp);
+			}
+		}
+		json_object_free(json);
+		
 	}
 	
 	// move point to beginning of netlink message
