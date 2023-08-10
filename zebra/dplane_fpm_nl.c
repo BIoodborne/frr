@@ -1536,7 +1536,6 @@ static int fpm_nl_process(struct zebra_dplane_provider *prov)
 		ctx = dplane_provider_dequeue_in_ctx(prov);
 		if (ctx == NULL)
 			break;
-
 		/*
 		 * Skip all notifications if not connected, we'll walk the RIB
 		 * anyway.

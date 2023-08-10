@@ -181,6 +181,7 @@ include zebra/subdir.am
 include watchfrr/subdir.am
 include qpb/subdir.am
 include fpm/subdir.am
+include fpmpbserver/subdir.am
 include grpc/subdir.am
 include tools/subdir.am
 
@@ -272,6 +273,7 @@ EXTRA_DIST += \
 	doc/user/Makefile \
 	eigrpd/Makefile \
 	fpm/Makefile \
+	fpmpbserver/Makefile \
 	grpc/Makefile \
 	isisd/Makefile \
 	ldpd/Makefile \

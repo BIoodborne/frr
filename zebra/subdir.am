@@ -224,6 +224,9 @@ endif
 if DEV_BUILD
 zebra_dplane_sample_plugin_la_SOURCES = zebra/sample_plugin.c
 zebra_dplane_sample_plugin_la_LDFLAGS = $(MODULE_LDFLAGS)
+
+
+
 endif
 
 nodist_zebra_zebra_SOURCES = \
@@ -240,6 +243,12 @@ module_LTLIBRARIES += zebra/dplane_fpm_nl.la
 zebra_dplane_fpm_nl_la_SOURCES = zebra/dplane_fpm_nl.c
 zebra_dplane_fpm_nl_la_LDFLAGS = $(MODULE_LDFLAGS)
 zebra_dplane_fpm_nl_la_LIBADD  =
+
+module_LTLIBRARIES += zebra/dplane_fpm_pb.la
+
+zebra_dplane_fpm_pb_la_SOURCES = zebra/dplane_fpm_pb.c
+zebra_dplane_fpm_pb_la_LDFLAGS = $(MODULE_LDFLAGS)
+zebra_dplane_fpm_pb_la_LIBADD  = fpm/libfrrfpm_pb.la qpb/libfrr_pb.la $(PROTOBUF_C_LIBS)
 endif
 
 if NETLINK_DEBUG

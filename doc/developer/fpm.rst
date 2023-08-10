@@ -37,6 +37,7 @@ advantages over Netlink:
 
    * ``fpm``
    * ``dplane_fpm_nl``
+   * ``dplane_fpm_pb``
 
 fpm
 ^^^
@@ -53,6 +54,13 @@ The newer FPM implementation that was built using ``zebra``'s data plane
 framework as a plugin. It only supports netlink and it shares ``zebra``'s
 netlink functions to translate route event snapshots into formatted binary
 data.
+
+
+dplane_fpm_pb
+^^^^^^^^^^^^^
+
+It has the same implementation as ``dplane_fpm_nl``, using ``zebra``'s data
+plane framework as a plugin. It supports transmitting data in protobuf format.
 
 
 Protocol Specification

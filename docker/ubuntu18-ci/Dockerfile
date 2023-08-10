@@ -62,7 +62,10 @@ RUN cd ~/frr && \
        --enable-user=frr \
        --enable-group=frr \
        --enable-vty-group=frrvty \
+       --enable-dev-build \
+       --enable-fpm \
        --enable-snmp=agentx \
+       --enable-protobuf \
        --with-pkg-extra-version=-my-manual-build && \
     make -j $(nproc) && \
     sudo make install
