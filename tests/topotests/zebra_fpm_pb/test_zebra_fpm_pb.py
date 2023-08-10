@@ -37,6 +37,11 @@ sys.path.append(os.path.join(CWD, '../'))
 from lib import topotest
 from lib.topogen import Topogen, TopoRouter, get_topogen
 from lib.topolog import logger
+from lib.common_config import create_static_routes
+
+NETWORK1_1 = {"ipv4": "1.1.1.1/32", "ipv6": "1::1/128"}
+NETWORK1_2 = {"ipv4": "1.1.1.2/32", "ipv6": "1::2/128"}
+NEXT_HOP_IP = {"ipv4": "Null0", "ipv6": "Null0"}
 
 def build_topo(tgen):
     r1 = tgen.add_router("r1")
@@ -47,41 +52,57 @@ def build_topo(tgen):
 
 def setup_module(mod):
     "Sets up the pytest environment"
-    # This function initiates the topology build with Topogen...
-    tgen = Topogen(build_topo, mod.__name__)
+    topodef = {
+        "s1": ("r1", "r2"),
+        "s2": ("r2", "r3"),
+        "s3": ("r2", "r4"),
+    }
+    tgen = Topogen(topodef, mod.__name__)
     tgen.start_topology()
-    print("topology started")
-    router_list = tgen.routers()
 
+    router_list = tgen.routers()
     for rname, router in router_list.items():
-        print(f"starting fpm simulator for {rname}")
+        print(f"starting fpmsyncd for {rname}")
         router.startFpmSimulator()
 
-        router.load_config(
-            TopoRouter.RD_ZEBRA, os.path.join(CWD, "{}/zebra.conf".format(rname)), "-M dplane_fpm_pb"
-        )
-        router.load_config(
-            TopoRouter.RD_BGP, os.path.join(CWD, "{}/bgpd.conf".format(rname))
-        )
+        daemon_file = "{}/{}/zebra.conf".format(CWD, rname)
+        router.load_config(TopoRouter.RD_ZEBRA, daemon_file,"-M dplane_fpm_pb")
+
+
+        daemon_file = "{}/{}/bgpd.conf".format(CWD, rname)
+        if os.path.isfile(daemon_file):
+            router.load_config(TopoRouter.RD_BGP, daemon_file)
+
 
     # Initialize all routers.
     tgen.start_router()
-
-    # Verify that we are using the proper version and that the BFD
-    # daemon exists.
-    for router in router_list.values():
-        # Check for Version
-        if router.has_version('<', '5.1'):
-            tgen.set_error('Unsupported FRR version')
-            break
 
 def teardown_module(mod):
     tgen = get_topogen()
     tgen.stop_topology()
 
+def open_json_file(filename):
+    try:
+        with open(filename, "r") as f:
+            return json.load(f)
+    except IOError:
+        assert False, "Could not read file {}".format(filename)
+
+def check_rib(result_file, expected_file):
+    def _check(result_file, expected_file):
+        logger.info("polling")
+        output = open_json_file("")
+        expected = open_json_file("{}/{}".format(CWD, expected_file))
+        return topotest.json_cmp(output, expected)
+
+    logger.info('[+] check {} "{}" {}'.format(name, cmd, expected_file))
+    tgen = get_topogen()
+    func = functools.partial(_check, name, cmd, expected_file)
+    success, result = topotest.run_and_expect(func, None, count=10, wait=0.5)
+    assert result is None, "Failed"
 
 def test_zebra_dplane_fpm_pb():
-    tgen = get_topogen
+    tgen = get_topogen()
     if tgen.routers_have_failure():
         pytest.skip(tgen.errors)
     

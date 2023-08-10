@@ -503,12 +503,14 @@ static int fpm_connect(struct event *t)
 	// if (!fpc->connecting)
 	// 	event_add_read(fpc->fthread->master, fpm_read, fpc, sock,
 	// 		       &fpc->t_read);
+	zlog_info("[fpm_connect] start fpm write");
 	event_add_write(fpc->fthread->master, fpm_write, fpc, sock,
 			&fpc->t_write);
 }
 
 static int fpm_pb_process(struct zebra_dplane_provider *prov)
 {
+	zlog_info("[fpm_pb_process] start");
 	struct zebra_dplane_ctx *ctx;
 	struct fpm_pb_ctx *fpc;
 	int counter, limit;
@@ -529,7 +531,7 @@ static int fpm_pb_process(struct zebra_dplane_provider *prov)
 		 * Skip all notifications if not connected, we'll walk the RIB
 		 * anyway.
 		 */
-
+		zlog_info("[fpm_pb_process] socket is %d,connecting is %d",fpc->socket,fpc->connecting);
 		if (fpc->socket != -1 && fpc->connecting == false) {
 
 			/*
@@ -768,6 +770,7 @@ static Fpm__AddRoute *create_add_route_message(qpb_allocator_t *allocator,
 static ssize_t protobuf_msg_encode(struct zebra_dplane_ctx *ctx, uint8_t *data,
 				   size_t datalen)
 {
+	zlog_info("[protobuf_msg_encode] start");
 	Fpm__Message *msg;
 	QPB_DECLARE_STACK_ALLOCATOR(allocator, 4096);
 	size_t len;
@@ -789,6 +792,7 @@ static ssize_t protobuf_msg_encode(struct zebra_dplane_ctx *ctx, uint8_t *data,
 
 static int fpm_pb_enqueue(struct fpm_pb_ctx *fpc, struct zebra_dplane_ctx *ctx)
 {
+	zlog_info("[fpm_pb_enqueue] start");
 	uint8_t pb_buf[NL_PKT_BUF_SIZE];
 	size_t pb_buf_len;
 	ssize_t rv;

@@ -34,7 +34,7 @@ void process_fpm_msg(fpm_msg_hdr_t *fpm_hdr){
 		}else{
 			zlog_info("[process_fpm_msg] key exist");
 		}
-		char buf[20]={0};
+		char buf[100]={0};
 		inet_ntop(AF_INET,msg->add_route->key->prefix->bytes.data,buf,sizeof(buf));
 		zlog_info("[process_fpm_msg] key prefix:%s",buf);
 		zlog_info("[process_fpm_msg] key length:%d",msg->add_route->key->prefix->length);

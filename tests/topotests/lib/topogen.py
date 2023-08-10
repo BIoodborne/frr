@@ -1090,6 +1090,8 @@ class TopoRouter(TopoGear):
         json_path = f"{dir_path}/output.json"
         self.cmd(f"mkdir -p {dir_path}")
         run_cmd = f"/usr/lib/frr/fpmsyncd -f {json_path} -d > {log_path}  2>&1 &"
+        file_cmd = f"touch {json_path}"
+        self.cmd_raises(file_cmd, warn=False)
         try:
             self.cmd_raises(run_cmd, warn=False)
         except subprocess.CalledProcessError as error:
