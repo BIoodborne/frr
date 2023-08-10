@@ -65,7 +65,8 @@ int main(int argc, char **argv)
 			zlog_info("fpm connection closed");
 			fpmpbserver_exit();
 		} catch (const exception &e) {
-			zlog_err("exception: %s had been thrown in daemon",e.what());
+			zlog_err("exception: %s had been thrown in daemon",
+				 e.what());
 			fpmpbserver_exit();
 			return 0;
 		}

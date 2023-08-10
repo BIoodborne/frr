@@ -4,66 +4,90 @@
 
 #define FPM_HEADER_SIZE 4
 struct Fpmpbserver_data fpmpbserver_data = {.bufSize = 2048,
-						.messageBuffer = NULL,
-						.pos = 0,
-						.server_socket = 0,
-						.connection_socket = 0,
-						.connected = false,
-						.server_up = false};
+					    .messageBuffer = NULL,
+					    .pos = 0,
+					    .server_socket = 0,
+					    .connection_socket = 0,
+					    .connected = false,
+					    .server_up = false};
 char *output_file_path = NULL;
 
-void process_fpm_msg(fpm_msg_hdr_t *fpm_hdr){
+void process_fpm_msg(fpm_msg_hdr_t *fpm_hdr)
+{
 	size_t msg_len = fpm_msg_len(fpm_hdr);
 	Fpm__Message *msg;
-	msg = fpm__message__unpack(NULL, msg_len-FPM_HEADER_SIZE, (uint8_t *)fpm_msg_data(fpm_hdr));
-	if(!msg){
+	msg = fpm__message__unpack(NULL, msg_len - FPM_HEADER_SIZE,
+				   (uint8_t *)fpm_msg_data(fpm_hdr));
+	if (!msg) {
 		zlog_info("[process_fpm_msg] unpack error!");
 		return;
-	}else{
-		zlog_info("[process_fpm_msg] msg_type:%d",msg->type);
-		if(!msg->add_route){
+	} else {
+		zlog_info("[process_fpm_msg] msg_type:%d", msg->type);
+		if (!msg->add_route) {
 			zlog_info("[process_fpm_msg] add_route not exist");
 			return;
 		}
-		zlog_info("[process_fpm_msg] msg add_route data:\nvrf_id:%d\naddress_family:%d\nmetric:%d\nsub_address_family:%d\nhas_route_type:%d\nroute_type:%d\n",
-		         msg->add_route->vrf_id,msg->add_route->address_family,msg->add_route->metric,
-				 msg->add_route->sub_address_family,msg->add_route->has_route_type,msg->add_route->route_type);
-		if(!msg->add_route->key){
+		zlog_info(
+			"[process_fpm_msg] msg add_route data:\nvrf_id:%d\naddress_family:%d\nmetric:%d\nsub_address_family:%d\nhas_route_type:%d\nroute_type:%d\n",
+			msg->add_route->vrf_id, msg->add_route->address_family,
+			msg->add_route->metric,
+			msg->add_route->sub_address_family,
+			msg->add_route->has_route_type,
+			msg->add_route->route_type);
+		if (!msg->add_route->key) {
 			zlog_info("[process_fpm_msg] key not exist");
 			return;
-		}else{
+		} else {
 			zlog_info("[process_fpm_msg] key exist");
 		}
-		char buf[100]={0};
-		inet_ntop(AF_INET,msg->add_route->key->prefix->bytes.data,buf,sizeof(buf));
-		zlog_info("[process_fpm_msg] key prefix:%s",buf);
-		zlog_info("[process_fpm_msg] key length:%d",msg->add_route->key->prefix->length);
+		char buf[100] = {0};
+		inet_ntop(AF_INET, msg->add_route->key->prefix->bytes.data, buf,
+			  sizeof(buf));
+		zlog_info("[process_fpm_msg] key prefix:%s", buf);
+		zlog_info("[process_fpm_msg] key length:%d",
+			  msg->add_route->key->prefix->length);
 
-		json_object *json=json_object_new_object();
-		json_object_int_add(json,"msg_type",int64_t(msg->type));
-		if(msg->add_route){
-			json_object_int_add(json,"vrf_id",int64_t(msg->add_route->vrf_id));
-			json_object_int_add(json,"address_family",int64_t(msg->add_route->address_family));
-			json_object_int_add(json,"metric",int64_t(msg->add_route->metric));
-			json_object_int_add(json,"sub_address_family",int64_t(msg->add_route->sub_address_family));
-			json_object_int_add(json,"has_route_type",int64_t(msg->add_route->has_route_type));
-			json_object_int_add(json,"route_type",int64_t(msg->add_route->route_type));
-			if(msg->add_route->key){
-				json_object_string_add(json,"prefix",buf);
-				json_object_int_add(json,"prefix_length",int64_t(msg->add_route->key->prefix->length));
+		json_object *json = json_object_new_object();
+		json_object_int_add(json, "msg_type", int64_t(msg->type));
+		if (msg->add_route) {
+			json_object_int_add(json, "vrf_id",
+					    int64_t(msg->add_route->vrf_id));
+			json_object_int_add(
+				json, "address_family",
+				int64_t(msg->add_route->address_family));
+			json_object_int_add(json, "metric",
+					    int64_t(msg->add_route->metric));
+			json_object_int_add(
+				json, "sub_address_family",
+				int64_t(msg->add_route->sub_address_family));
+			json_object_int_add(
+				json, "has_route_type",
+				int64_t(msg->add_route->has_route_type));
+			json_object_int_add(
+				json, "route_type",
+				int64_t(msg->add_route->route_type));
+			if (msg->add_route->key) {
+				json_object_string_add(json, "prefix", buf);
+				json_object_int_add(
+					json, "prefix_length",
+					int64_t(msg->add_route->key->prefix
+							->length));
 			}
 		}
-		if(output_file_path){
-			FILE *fp=fopen(output_file_path,"a+");
-			if(!fp){
-				zlog_info("[process_fpm_msg] open file error file path :%s",output_file_path);
-			}else{
-				fprintf(fp,"%s\n",json_object_to_json_string_ext(json, JSON_C_TO_STRING_PRETTY));
+		if (output_file_path) {
+			FILE *fp = fopen(output_file_path, "a+");
+			if (!fp) {
+				zlog_info(
+					"[process_fpm_msg] open file error file path :%s",
+					output_file_path);
+			} else {
+				fprintf(fp, "%s\n",
+					json_object_to_json_string_ext(
+						json, JSON_C_TO_STRING_PRETTY));
 				fclose(fp);
 			}
 		}
 		json_object_free(json);
-		
 	}
 }
 
@@ -77,10 +101,10 @@ int fpmpbserver_init()
 	}
 
 	int opt = 1;
-	if (setsockopt(fpmpbserver_data.server_socket, SOL_SOCKET,
-		       SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+	if (setsockopt(fpmpbserver_data.server_socket, SOL_SOCKET, SO_REUSEADDR,
+		       &opt, sizeof(opt)) == -1) {
 		throw system_error(make_error_code(errc::bad_message),
-				"Failed to set socket option");
+				   "Failed to set socket option");
 	}
 
 	// bind port
@@ -101,8 +125,7 @@ int fpmpbserver_init()
 	}
 
 	fpmpbserver_data.server_up = true;
-	fpmpbserver_data.messageBuffer =
-		new char[fpmpbserver_data.bufSize];
+	fpmpbserver_data.messageBuffer = new char[fpmpbserver_data.bufSize];
 	return 0;
 }
 
@@ -117,9 +140,6 @@ int fpmpbserver_exit()
 }
 
 
-
-
-
 int fpmpbserver_read_data()
 {
 
@@ -130,8 +150,7 @@ int fpmpbserver_read_data()
 
 
 	read = ::read(fpmpbserver_data.connection_socket,
-		      fpmpbserver_data.messageBuffer +
-			      fpmpbserver_data.pos,
+		      fpmpbserver_data.messageBuffer + fpmpbserver_data.pos,
 		      fpmpbserver_data.bufSize - fpmpbserver_data.pos);
 	if (read == 0)
 		throw FpmConnectionClosedException();
@@ -231,13 +250,13 @@ int fpmpbserver_poll(void)
 			}
 
 			zlog_info("New client connected: %s",
-				   inet_ntoa(client_addr.sin_addr));
+				  inet_ntoa(client_addr.sin_addr));
 		}
 
 
 		// check for events on client sockets
 		for (int i = 1; i <= MAX_CLIENTS; i++) {
-			zlog_info("check sockets i:%d",i);
+			zlog_info("check sockets i:%d", i);
 
 			if (poll_fd_set[i].fd == 0)
 				continue;

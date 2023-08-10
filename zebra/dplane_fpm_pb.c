@@ -108,7 +108,7 @@ struct fpm_pb_ctx {
 	} counters;
 
 
-} *gfpc;
+} * gfpc;
 
 enum fpm_pb_events {
 	/* Ask for FPM to reconnect the external server. */
@@ -137,10 +137,13 @@ static int fpm_connect(struct event *t);
 static void fpm_process_event(struct event *t);
 static void fpm_process_queue(struct event *t);
 static int fpm_pb_process(struct zebra_dplane_provider *prov);
-static ssize_t protobuf_msg_encode(struct zebra_dplane_ctx *ctx, uint8_t *data, size_t datalen);
+static ssize_t protobuf_msg_encode(struct zebra_dplane_ctx *ctx, uint8_t *data,
+				   size_t datalen);
 static int fpm_pb_enqueue(struct fpm_pb_ctx *fpc, struct zebra_dplane_ctx *ctx);
-static Fpm__Message *create_route_message(qpb_allocator_t *allocator, struct zebra_dplane_ctx *ctx);
-static Fpm__AddRoute *create_add_route_message(qpb_allocator_t *allocator, struct zebra_dplane_ctx *ctx);
+static Fpm__Message *create_route_message(qpb_allocator_t *allocator,
+					  struct zebra_dplane_ctx *ctx);
+static Fpm__AddRoute *create_add_route_message(qpb_allocator_t *allocator,
+					       struct zebra_dplane_ctx *ctx);
 
 /*
  * CLI.
@@ -168,7 +171,7 @@ DEFUN(fpm_set_address, fpm_set_address_cmd,
 	if (inet_pton(AF_INET, argv[2]->arg, naddr) == 1) {
 		sin = (struct sockaddr_in *)&gfpc->addr;
 
-		memset(sin, 0, sizeof(*sin));	
+		memset(sin, 0, sizeof(*sin));
 		sin->sin_family = AF_INET;
 		sin->sin_port =
 			port ? htons(port) : htons(SOUTHBOUND_DEFAULT_PORT);
@@ -203,8 +206,7 @@ ask_reconnect:
 
 DEFUN(no_fpm_set_address, no_fpm_set_address_cmd,
       "no fpm address [<A.B.C.D|X:X::X:X> [port <1-65535>]]",
-      NO_STR
-      FPM_STR
+      NO_STR FPM_STR
       "FPM remote listening server address\n"
       "Remote IPv4 FPM server\n"
       "Remote IPv6 FPM server\n"
@@ -217,15 +219,12 @@ DEFUN(no_fpm_set_address, no_fpm_set_address_cmd,
 }
 
 
-DEFUN(fpm_show_counters, fpm_show_counters_cmd,
-      "show fpm counters",
-      SHOW_STR
-      FPM_STR
-      "FPM statistic counters\n")
+DEFUN(fpm_show_counters, fpm_show_counters_cmd, "show fpm counters",
+      SHOW_STR FPM_STR "FPM statistic counters\n")
 {
 	vty_out(vty, "%30s\n%30s\n", "FPM counters", "============");
 
-#define SHOW_COUNTER(label, counter) \
+#define SHOW_COUNTER(label, counter)                                           \
 	vty_out(vty, "%28s: %u\n", (label), (counter))
 
 	SHOW_COUNTER("Input bytes", gfpc->counters.bytes_read);
@@ -236,8 +235,7 @@ DEFUN(fpm_show_counters, fpm_show_counters_cmd,
 	SHOW_COUNTER("Connection errors", gfpc->counters.connection_errors);
 	SHOW_COUNTER("Data plane items processed",
 		     gfpc->counters.dplane_contexts);
-	SHOW_COUNTER("Data plane items enqueued",
-		     gfpc->counters.ctxqueue_len);
+	SHOW_COUNTER("Data plane items enqueued", gfpc->counters.ctxqueue_len);
 	SHOW_COUNTER("Data plane items queue peak",
 		     gfpc->counters.ctxqueue_len_peak);
 	SHOW_COUNTER("Buffer full hits", gfpc->counters.buffer_full);
@@ -249,11 +247,8 @@ DEFUN(fpm_show_counters, fpm_show_counters_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(fpm_reset_counters, fpm_reset_counters_cmd,
-      "clear fpm counters",
-      CLEAR_STR
-      FPM_STR
-      "FPM statistic counters\n")
+DEFUN(fpm_reset_counters, fpm_reset_counters_cmd, "clear fpm counters",
+      CLEAR_STR FPM_STR "FPM statistic counters\n")
 {
 	event_add_event(gfpc->fthread->master, fpm_process_event, gfpc,
 			FNE_RESET_COUNTERS, &gfpc->t_event);
@@ -492,8 +487,8 @@ static int fpm_connect(struct event *t)
 
 	rv = connect(sock, (struct sockaddr *)&fpc->addr, slen);
 	if (rv == -1 && errno != EINPROGRESS) {
-		atomic_fetch_add_explicit(&fpc->counters.connection_errors,
-		1, 			  memory_order_relaxed);
+		atomic_fetch_add_explicit(&fpc->counters.connection_errors, 1,
+					  memory_order_relaxed);
 		close(sock);
 		zlog_warn("%s: fpm connection failed: %s", __func__,
 			  strerror(errno));
@@ -535,7 +530,8 @@ static int fpm_pb_process(struct zebra_dplane_provider *prov)
 		 * Skip all notifications if not connected, we'll walk the RIB
 		 * anyway.
 		 */
-		zlog_info("[fpm_pb_process] socket is %d,connecting is %d",fpc->socket,fpc->connecting);
+		zlog_info("[fpm_pb_process] socket is %d,connecting is %d",
+			  fpc->socket, fpc->connecting);
 		if (fpc->socket != -1 && fpc->connecting == false) {
 
 			/*
@@ -653,77 +649,77 @@ static Fpm__Message *create_route_message(qpb_allocator_t *allocator,
 
 	fpm__message__init(msg);
 	switch (op) {
-		case DPLANE_OP_ROUTE_INSTALL:
-			/*create add route message*/
-			msg->has_type = 1;
-			msg->type = FPM__MESSAGE__TYPE__ADD_ROUTE;
-			if (IS_ZEBRA_DEBUG_FPM){
-				zlog_debug("fpm_pb message:");
-				zlog_debug("==========");
-				zlog_debug("has_type: %d", msg->has_type);
-				zlog_debug("type: %d", msg->type);
-			}
-			msg->add_route = create_add_route_message(allocator, ctx);
-			if (!msg->add_route) {
-				return NULL;
-			}
-			break;
+	case DPLANE_OP_ROUTE_INSTALL:
+		/*create add route message*/
+		msg->has_type = 1;
+		msg->type = FPM__MESSAGE__TYPE__ADD_ROUTE;
+		if (IS_ZEBRA_DEBUG_FPM) {
+			zlog_debug("fpm_pb message:");
+			zlog_debug("==========");
+			zlog_debug("has_type: %d", msg->has_type);
+			zlog_debug("type: %d", msg->type);
+		}
+		msg->add_route = create_add_route_message(allocator, ctx);
+		if (!msg->add_route) {
+			return NULL;
+		}
+		break;
 
-		/* Un-handled by FPM at this time. */
-		case DPLANE_OP_ROUTE_UPDATE:
-		case DPLANE_OP_ROUTE_DELETE:
-		case DPLANE_OP_MAC_INSTALL:
-		case DPLANE_OP_MAC_DELETE:
-		case DPLANE_OP_NH_DELETE:
-		case DPLANE_OP_NH_INSTALL:
-		case DPLANE_OP_NH_UPDATE:	
-		case DPLANE_OP_LSP_INSTALL:
-		case DPLANE_OP_LSP_UPDATE:
-		case DPLANE_OP_LSP_DELETE:
-		case DPLANE_OP_PW_INSTALL:
-		case DPLANE_OP_PW_UNINSTALL:
-		case DPLANE_OP_ADDR_INSTALL:
-		case DPLANE_OP_ADDR_UNINSTALL:
-		case DPLANE_OP_NEIGH_INSTALL:
-		case DPLANE_OP_NEIGH_UPDATE:
-		case DPLANE_OP_NEIGH_DELETE:
-		case DPLANE_OP_VTEP_ADD:
-		case DPLANE_OP_VTEP_DELETE:
-		case DPLANE_OP_SYS_ROUTE_ADD:
-		case DPLANE_OP_SYS_ROUTE_DELETE:
-		case DPLANE_OP_ROUTE_NOTIFY:
-		case DPLANE_OP_LSP_NOTIFY:
-		case DPLANE_OP_RULE_ADD:
-		case DPLANE_OP_RULE_DELETE:
-		case DPLANE_OP_RULE_UPDATE:
-		case DPLANE_OP_NEIGH_DISCOVER:
-		case DPLANE_OP_BR_PORT_UPDATE:
-		case DPLANE_OP_IPTABLE_ADD:
-		case DPLANE_OP_IPTABLE_DELETE:
-		case DPLANE_OP_IPSET_ADD:
-		case DPLANE_OP_IPSET_DELETE:
-		case DPLANE_OP_IPSET_ENTRY_ADD:
-		case DPLANE_OP_IPSET_ENTRY_DELETE:
-		case DPLANE_OP_NEIGH_IP_INSTALL:
-		case DPLANE_OP_NEIGH_IP_DELETE:
-		case DPLANE_OP_NEIGH_TABLE_UPDATE:
-		case DPLANE_OP_GRE_SET:
-		case DPLANE_OP_INTF_ADDR_ADD:
-		case DPLANE_OP_INTF_ADDR_DEL:
-		case DPLANE_OP_INTF_NETCONFIG:
-		case DPLANE_OP_INTF_INSTALL:
-		case DPLANE_OP_INTF_UPDATE:
-		case DPLANE_OP_INTF_DELETE:
-		case DPLANE_OP_TC_QDISC_INSTALL:
-		case DPLANE_OP_TC_QDISC_UNINSTALL:
-		case DPLANE_OP_TC_CLASS_ADD:
-		case DPLANE_OP_TC_CLASS_DELETE:
-		case DPLANE_OP_TC_CLASS_UPDATE:
-		case DPLANE_OP_TC_FILTER_ADD:
-		case DPLANE_OP_TC_FILTER_DELETE:
-		case DPLANE_OP_TC_FILTER_UPDATE:
-		case DPLANE_OP_NONE:
-			break;
+	/* Un-handled by FPM at this time. */
+	case DPLANE_OP_ROUTE_UPDATE:
+	case DPLANE_OP_ROUTE_DELETE:
+	case DPLANE_OP_MAC_INSTALL:
+	case DPLANE_OP_MAC_DELETE:
+	case DPLANE_OP_NH_DELETE:
+	case DPLANE_OP_NH_INSTALL:
+	case DPLANE_OP_NH_UPDATE:
+	case DPLANE_OP_LSP_INSTALL:
+	case DPLANE_OP_LSP_UPDATE:
+	case DPLANE_OP_LSP_DELETE:
+	case DPLANE_OP_PW_INSTALL:
+	case DPLANE_OP_PW_UNINSTALL:
+	case DPLANE_OP_ADDR_INSTALL:
+	case DPLANE_OP_ADDR_UNINSTALL:
+	case DPLANE_OP_NEIGH_INSTALL:
+	case DPLANE_OP_NEIGH_UPDATE:
+	case DPLANE_OP_NEIGH_DELETE:
+	case DPLANE_OP_VTEP_ADD:
+	case DPLANE_OP_VTEP_DELETE:
+	case DPLANE_OP_SYS_ROUTE_ADD:
+	case DPLANE_OP_SYS_ROUTE_DELETE:
+	case DPLANE_OP_ROUTE_NOTIFY:
+	case DPLANE_OP_LSP_NOTIFY:
+	case DPLANE_OP_RULE_ADD:
+	case DPLANE_OP_RULE_DELETE:
+	case DPLANE_OP_RULE_UPDATE:
+	case DPLANE_OP_NEIGH_DISCOVER:
+	case DPLANE_OP_BR_PORT_UPDATE:
+	case DPLANE_OP_IPTABLE_ADD:
+	case DPLANE_OP_IPTABLE_DELETE:
+	case DPLANE_OP_IPSET_ADD:
+	case DPLANE_OP_IPSET_DELETE:
+	case DPLANE_OP_IPSET_ENTRY_ADD:
+	case DPLANE_OP_IPSET_ENTRY_DELETE:
+	case DPLANE_OP_NEIGH_IP_INSTALL:
+	case DPLANE_OP_NEIGH_IP_DELETE:
+	case DPLANE_OP_NEIGH_TABLE_UPDATE:
+	case DPLANE_OP_GRE_SET:
+	case DPLANE_OP_INTF_ADDR_ADD:
+	case DPLANE_OP_INTF_ADDR_DEL:
+	case DPLANE_OP_INTF_NETCONFIG:
+	case DPLANE_OP_INTF_INSTALL:
+	case DPLANE_OP_INTF_UPDATE:
+	case DPLANE_OP_INTF_DELETE:
+	case DPLANE_OP_TC_QDISC_INSTALL:
+	case DPLANE_OP_TC_QDISC_UNINSTALL:
+	case DPLANE_OP_TC_CLASS_ADD:
+	case DPLANE_OP_TC_CLASS_DELETE:
+	case DPLANE_OP_TC_CLASS_UPDATE:
+	case DPLANE_OP_TC_FILTER_ADD:
+	case DPLANE_OP_TC_FILTER_DELETE:
+	case DPLANE_OP_TC_FILTER_UPDATE:
+	case DPLANE_OP_NONE:
+		break;
 	}
 
 	return msg;
@@ -758,16 +754,16 @@ static Fpm__AddRoute *create_add_route_message(qpb_allocator_t *allocator,
 	msg->has_route_type = 1;
 	msg->route_type = FPM__ROUTE_TYPE__NORMAL;
 
-	if (IS_ZEBRA_DEBUG_FPM){
+	if (IS_ZEBRA_DEBUG_FPM) {
 		zlog_debug("add route message:");
 		zlog_debug("==========");
-		zlog_debug("vrf_id: %d",msg->vrf_id);
-		zlog_debug("address_family: %d",msg->address_family);
-		zlog_debug("metric:%d",msg->metric);
-		zlog_debug("sub_address_family: %d",msg->sub_address_family);
-		zlog_debug("has_router_type: %d",msg->has_route_type);
-		zlog_debug("route_type:%d",msg->route_type);
-	}	
+		zlog_debug("vrf_id: %d", msg->vrf_id);
+		zlog_debug("address_family: %d", msg->address_family);
+		zlog_debug("metric:%d", msg->metric);
+		zlog_debug("sub_address_family: %d", msg->sub_address_family);
+		zlog_debug("has_router_type: %d", msg->has_route_type);
+		zlog_debug("route_type:%d", msg->route_type);
+	}
 	return msg;
 }
 
@@ -805,7 +801,7 @@ static int fpm_pb_enqueue(struct fpm_pb_ctx *fpc, struct zebra_dplane_ctx *ctx)
 
 	pb_buf_len = 0;
 	frr_mutex_lock_autounlock(&fpc->obuf_mutex);
-	
+
 	pb_buf_len = protobuf_msg_encode(ctx, pb_buf, sizeof(pb_buf));
 
 	if (pb_buf_len == 0) {
@@ -968,9 +964,7 @@ static int fpm_pb_init(void)
 	return 0;
 }
 
-FRR_MODULE_SETUP(
-	.name = "dplane_fpm_pb", 
-	.version = "0.0.1",
-	.description = "Data plane plugin for FPM using protocol buffer.",
-	.init = fpm_pb_init, 
-);
+FRR_MODULE_SETUP(.name = "dplane_fpm_pb", .version = "0.0.1",
+		 .description =
+			 "Data plane plugin for FPM using protocol buffer.",
+		 .init = fpm_pb_init, );

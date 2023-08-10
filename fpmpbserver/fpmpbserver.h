@@ -42,9 +42,10 @@ struct Fpmpbserver_data {
 };
 
 
-class FpmConnectionClosedException : public std::exception {
+class FpmConnectionClosedException : public std::exception
+{
 };
-extern struct Fpmpbserver_data fpmpbserver_data ;
+extern struct Fpmpbserver_data fpmpbserver_data;
 
 
 int fpmpbserver_init();
