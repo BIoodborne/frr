@@ -1,7 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Zebra dataplane plugin for Forwarding Plane Manager (FPM) using protocol
  * buffer.
+ * Copyright (C) 2019 Network Device Education Foundation, Inc. ("NetDEF")
+ *                    Rafael Zalamena
  */
+
 
 #ifdef HAVE_CONFIG_H
 #include "config.h" /* Include this explicitly */

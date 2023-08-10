@@ -60,7 +60,7 @@ def setup_module(mod):
 
     router_list = tgen.routers()
     for rname, router in router_list.items():
-        print(f"starting fpmsyncd for {rname}")
+        print(f"starting fpmpbserver for {rname}")
         router.startFpmSimulator()
 
         daemon_file = "{}/{}/zebra.conf".format(CWD, rname)

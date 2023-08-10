@@ -69,7 +69,6 @@ if [ ! -e Makefile ]; then
 		--sysconfdir=/etc/frr \
 		--enable-multipath=0 \
 		--enable-fpm \
-		--enable-fpmsyncd \
 		--enable-sharpd \
 		$EXTRA_CONFIGURE \
 		--with-pkg-extra-version=-topotests \

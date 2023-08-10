@@ -1,0 +1,21 @@
+sbin_PROGRAMS += fpmpbserver/fpmpbserver
+
+fpmpbserver_fpmpbserver_CXXFLAGS = -g $(AM_CPPFLAGS) $(PROTOBUF_C_CFLAGS)
+fpmpbserver_fpmpbserver_LDADD = lib/libfrr.la $(LIBCAP) $(UST_LIBS) fpm/libfrrfpm_pb.la qpb/libfrr_pb.la $(PROTOBUF_C_LIBS)
+
+fpmpbserver_fpmpbserver_SOURCES = \
+	fpmpbserver/main.cpp \
+	fpmpbserver/fpmpbserver.h \
+	fpmpbserver/fpmpbserver.cpp \
+	# end
+
+CLEANFILES += \
+	fpm/fpm.pb-c.c \
+	fpm/fpm.pb-c.h \
+	# end
+
+EXTRA_DIST += fpm/fpm.proto
+
+
+
+

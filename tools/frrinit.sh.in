@@ -16,18 +16,6 @@
 # provides the actual functions to start/stop/restart things.
 #
 
-
-mkdir -p /tmp
-touch /tmp/logs.txt
-echo "success start" > /tmp/logs.txt
-touch /tmp/output.json
-touch /tmp/fpmsyncd.log
-chmod +x /tmp/fpmsyncd.log
-chmod +x /tmp/output.json
-/usr/lib/frr/fpmsyncd -f /tmp/output.json -d  > /tmp/fpmsyncd.log 2>&1 &
-echo "success final" > /tmp/logs.txt
-
-
 if [ -r "/lib/lsb/init-functions" ]; then
 	. /lib/lsb/init-functions
 else

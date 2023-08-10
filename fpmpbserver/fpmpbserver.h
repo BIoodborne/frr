@@ -1,5 +1,5 @@
-#ifndef _FPMSYNCD_H
-#define _FPMSYNCD_H
+#ifndef _FPMPBSERVER_H
+#define _FPMPBSERVER_H
 
 
 #include <arpa/inet.h>
@@ -31,25 +31,25 @@
 using namespace std;
 extern char *output_file_path;
 
-struct Fpmsyncd_meta_data {
-	unsigned int m_bufSize;
-	char *m_messageBuffer;
-	unsigned int m_pos;
-	int m_server_socket;
-	int m_connection_socket;
-	bool m_connected;
-	bool m_server_up;
+struct Fpmpbserver_data {
+	unsigned int bufSize;
+	char *messageBuffer;
+	unsigned int pos;
+	int server_socket;
+	int connection_socket;
+	bool connected;
+	bool server_up;
 };
 
 
 class FpmConnectionClosedException : public std::exception {
 };
-extern struct Fpmsyncd_meta_data fpmsyncd_meta_data ;
+extern struct Fpmpbserver_data fpmpbserver_data ;
 
 
-int fpmsyncd_init();
-int fpmsyncd_exit();
-int fpmsyncd_poll(void);
-int fpmsyncd_read_data();
+int fpmpbserver_init();
+int fpmpbserver_exit();
+int fpmpbserver_poll(void);
+int fpmpbserver_read_data();
 
 #endif

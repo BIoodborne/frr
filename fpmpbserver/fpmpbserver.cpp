@@ -1,15 +1,15 @@
 
-#include "fpmsyncd.h"
+#include "fpmpbserver.h"
 #include "fpm/fpm.pb-c.h"
 
 #define FPM_HEADER_SIZE 4
-struct Fpmsyncd_meta_data fpmsyncd_meta_data = {.m_bufSize = 2048,
-						.m_messageBuffer = NULL,
-						.m_pos = 0,
-						.m_server_socket = 0,
-						.m_connection_socket = 0,
-						.m_connected = false,
-						.m_server_up = false};
+struct Fpmpbserver_data fpmpbserver_data = {.bufSize = 2048,
+						.messageBuffer = NULL,
+						.pos = 0,
+						.server_socket = 0,
+						.connection_socket = 0,
+						.connected = false,
+						.server_up = false};
 char *output_file_path = NULL;
 
 void process_fpm_msg(fpm_msg_hdr_t *fpm_hdr){
@@ -65,24 +65,19 @@ void process_fpm_msg(fpm_msg_hdr_t *fpm_hdr){
 		json_object_free(json);
 		
 	}
-	
-	// move point to beginning of netlink message
-	// char *test_msg = (char *)fpm_msg_data(fpm_hdr);
-	// zlog_info("[process_fpm_msg] msg data:%s,size:%lu,all size:%lu\n",test_msg,sizeof(test_msg),msg_len);
 }
 
-int fpmsyncd_init()
+int fpmpbserver_init()
 {
-	zlog_info("fpmsyncd_init start");
-	fpmsyncd_meta_data.m_server_socket =
+	fpmpbserver_data.server_socket =
 		socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (fpmsyncd_meta_data.m_server_socket < 0) {
+	if (fpmpbserver_data.server_socket < 0) {
 		throw system_error(make_error_code(errc::bad_message),
 				   "Failed to create socket");
 	}
 
 	int opt = 1;
-	if (setsockopt(fpmsyncd_meta_data.m_server_socket, SOL_SOCKET,
+	if (setsockopt(fpmpbserver_data.server_socket, SOL_SOCKET,
 		       SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
 		throw system_error(make_error_code(errc::bad_message),
 				"Failed to set socket option");
@@ -94,30 +89,30 @@ int fpmsyncd_init()
 	server_addr.sin_port = htons(FPM_DEFAULT_PORT);
 	server_addr.sin_addr.s_addr = FPM_DEFAULT_IP;
 
-	if (bind(fpmsyncd_meta_data.m_server_socket, (sockaddr *)&server_addr,
+	if (bind(fpmpbserver_data.server_socket, (sockaddr *)&server_addr,
 		 sizeof(server_addr)) == -1) {
 		throw system_error(make_error_code(errc::bad_message),
 				   "Failed to bind port");
 	}
 
-	if (listen(fpmsyncd_meta_data.m_server_socket, 10) == -1) {
+	if (listen(fpmpbserver_data.server_socket, 10) == -1) {
 		throw system_error(make_error_code(errc::bad_message),
 				   "Failed to listen on socket");
 	}
 
-	fpmsyncd_meta_data.m_server_up = true;
-	fpmsyncd_meta_data.m_messageBuffer =
-		new char[fpmsyncd_meta_data.m_bufSize];
+	fpmpbserver_data.server_up = true;
+	fpmpbserver_data.messageBuffer =
+		new char[fpmpbserver_data.bufSize];
 	return 0;
 }
 
-int fpmsyncd_exit()
+int fpmpbserver_exit()
 {
-	delete[] fpmsyncd_meta_data.m_messageBuffer;
-	if (fpmsyncd_meta_data.m_connected)
-		close(fpmsyncd_meta_data.m_connection_socket);
-	if (fpmsyncd_meta_data.m_server_up)
-		close(fpmsyncd_meta_data.m_server_socket);
+	delete[] fpmpbserver_data.messageBuffer;
+	if (fpmpbserver_data.connected)
+		close(fpmpbserver_data.connection_socket);
+	if (fpmpbserver_data.server_up)
+		close(fpmpbserver_data.server_socket);
 	return 0;
 }
 
@@ -125,7 +120,7 @@ int fpmsyncd_exit()
 
 
 
-int fpmsyncd_read_data()
+int fpmpbserver_read_data()
 {
 
 	fpm_msg_hdr_t *fpm_hdr;
@@ -134,23 +129,23 @@ int fpmsyncd_read_data()
 	ssize_t read;
 
 
-	read = ::read(fpmsyncd_meta_data.m_connection_socket,
-		      fpmsyncd_meta_data.m_messageBuffer +
-			      fpmsyncd_meta_data.m_pos,
-		      fpmsyncd_meta_data.m_bufSize - fpmsyncd_meta_data.m_pos);
+	read = ::read(fpmpbserver_data.connection_socket,
+		      fpmpbserver_data.messageBuffer +
+			      fpmpbserver_data.pos,
+		      fpmpbserver_data.bufSize - fpmpbserver_data.pos);
 	if (read == 0)
 		throw FpmConnectionClosedException();
 	if (read < 0)
 		throw system_error(make_error_code(errc::bad_message),
 				   "read connnected socket error");
-	fpmsyncd_meta_data.m_pos += (uint32_t)read;
+	fpmpbserver_data.pos += (uint32_t)read;
 
 	while (true) {
 		fpm_hdr = reinterpret_cast<fpm_msg_hdr_t *>(static_cast<void *>(
-			fpmsyncd_meta_data.m_messageBuffer + start));
+			fpmpbserver_data.messageBuffer + start));
 
 
-		left = fpmsyncd_meta_data.m_pos - start;
+		left = fpmpbserver_data.pos - start;
 
 		if (left < FPM_MSG_HDR_LEN) {
 			break;
@@ -173,19 +168,18 @@ int fpmsyncd_read_data()
 		start += msg_len;
 	}
 
-	memmove(fpmsyncd_meta_data.m_messageBuffer,
-		fpmsyncd_meta_data.m_messageBuffer + start,
-		fpmsyncd_meta_data.m_pos - start);
-	fpmsyncd_meta_data.m_pos = fpmsyncd_meta_data.m_pos - (uint32_t)start;
+	memmove(fpmpbserver_data.messageBuffer,
+		fpmpbserver_data.messageBuffer + start,
+		fpmpbserver_data.pos - start);
+	fpmpbserver_data.pos = fpmpbserver_data.pos - (uint32_t)start;
 	return 0;
 }
 
-int fpmsyncd_poll(void)
+int fpmpbserver_poll(void)
 {
-	zlog_info("fpmsyncd_poll start");
 	pollfd poll_fd_set[MAX_CLIENTS + 1];
 	memset(poll_fd_set, 0, sizeof(poll_fd_set));
-	poll_fd_set[0].fd = fpmsyncd_meta_data.m_server_socket;
+	poll_fd_set[0].fd = fpmpbserver_data.server_socket;
 	poll_fd_set[0].events = POLLIN;
 
 
@@ -205,9 +199,8 @@ int fpmsyncd_poll(void)
 			sockaddr_in client_addr{};
 			socklen_t addr_len = sizeof(client_addr);
 			int client_fd =
-				accept(fpmsyncd_meta_data.m_server_socket,
+				accept(fpmpbserver_data.server_socket,
 				       (sockaddr *)&client_addr, &addr_len);
-			zlog_info("client_fd:%d",client_fd);
 			if (client_fd == -1) {
 				throw system_error(
 					make_error_code(errc::bad_message),
@@ -222,9 +215,9 @@ int fpmsyncd_poll(void)
 					zlog_info("has connected");
 					poll_fd_set[i].fd = client_fd;
 					poll_fd_set[i].events = POLLIN;
-					fpmsyncd_meta_data.m_connection_socket =
+					fpmpbserver_data.connection_socket =
 						client_fd;
-					fpmsyncd_meta_data.m_connected = true;
+					fpmpbserver_data.connected = true;
 					break;
 				}
 			}
@@ -250,7 +243,7 @@ int fpmsyncd_poll(void)
 				continue;
 
 			if (poll_fd_set[i].revents & POLLIN) {
-				fpmsyncd_read_data();
+				fpmpbserver_read_data();
 			}
 
 			if (poll_fd_set[i].revents &

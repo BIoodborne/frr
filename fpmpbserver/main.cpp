@@ -1,4 +1,4 @@
-#include "fpmsyncd.h"
+#include "fpmpbserver.h"
 #include "zlog.h"
 struct option longopts[] = {{"help", no_argument, NULL, 'h'},
 			    {"debug", no_argument, NULL, 'd'},
@@ -28,49 +28,45 @@ int main(int argc, char **argv)
 		case 0:
 			break;
 		case 'f':
-			// defined in fpmsyncd.h
 			output_file_path = optarg;
 			break;
 		case 'd':
 			debug_mode = true;
 			break;
 		case 'h':
-			usage("fpmsyncd", 1);
+			usage("fpmpbserver", 1);
 			break;
 		default:
-			usage("fpmsyncd", 1);
+			usage("fpmpbserver", 1);
 			break;
 		}
 	}
 
-
-	zlog_debug("FPMSYNCD starting");
-
 	if (debug_mode)
-		zlog_aux_init("FPMSYNCD", LOG_DEBUG);
+		zlog_aux_init("FPMPBSERVER", LOG_DEBUG);
 	else
-		zlog_aux_init("FPMSYNCD", LOG_INFO);
+		zlog_aux_init("FPMPBSERVER", LOG_INFO);
 
 	if (output_file_path == NULL) {
 		zlog_err("output file path not specified");
-		usage("fpmsyncd", 1);
+		usage("fpmpbserver", 1);
 	} else if (access(output_file_path, F_OK) == -1) {
 		zlog_err("output file path does not exist");
-		usage("fpmsyncd", 1);
+		usage("fpmpbserver", 1);
 	} else
 		zlog_debug("output file path: %s", output_file_path);
 
 
 	while (1) {
 		try {
-			fpmsyncd_init();
-			fpmsyncd_poll();
+			fpmpbserver_init();
+			fpmpbserver_poll();
 		} catch (FpmConnectionClosedException &e) {
 			zlog_info("fpm connection closed");
-			fpmsyncd_exit();
+			fpmpbserver_exit();
 		} catch (const exception &e) {
 			zlog_err("exception: %s had been thrown in daemon",e.what());
-			fpmsyncd_exit();
+			fpmpbserver_exit();
 			return 0;
 		}
 	}
