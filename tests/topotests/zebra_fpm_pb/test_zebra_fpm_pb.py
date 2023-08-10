@@ -25,9 +25,7 @@ import os
 import sys
 import pytest
 import json
-import re
-from functools import partial
-import pdb
+import functools
 # Save the Current Working Directory to find configuration files.
 CWD = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(CWD, '../'))
@@ -76,6 +74,11 @@ def setup_module(mod):
 
     # Initialize all routers.
     tgen.start_router()
+    router1 = tgen.gears['r1']
+    dir_path = f"{router1.logdir}/{router1.name}"
+    json_path = f"{dir_path}/output.json"
+    print(json_path)
+    print("helloworld")
 
 def teardown_module(mod):
     tgen = get_topogen()
@@ -88,16 +91,33 @@ def open_json_file(filename):
     except IOError:
         assert False, "Could not read file {}".format(filename)
 
-def check_rib(result_file, expected_file):
-    def _check(result_file, expected_file):
+def check_rib(name,result_file, expected_file):
+    def format_json_file(file):
+        f=open(file,"r+")
+        content=f.read()
+        content=content.replace("}","},",content.count("}")-1)
+        content="[\n"+content+"\n]"
+        f.close()
+        f=open(file,"w+")
+        f.write(content)
+        f.close()
+
+    def _check(name,result_file, expected_file):
         logger.info("polling")
-        output = open_json_file("")
+
+        tgen = get_topogen()
+        router = tgen.gears[name]
+        dir_path = f"{router.logdir}/{router.name}"
+        json_path = f"{dir_path}/{result_file}"
+
+        format_json_file(json_path)
+        output = open_json_file(json_path)
         expected = open_json_file("{}/{}".format(CWD, expected_file))
         return topotest.json_cmp(output, expected)
 
-    logger.info('[+] check {} "{}" {}'.format(name, cmd, expected_file))
+    logger.info('[+] check {} "{}" {}'.format(name, result_file, expected_file))
     tgen = get_topogen()
-    func = functools.partial(_check, name, cmd, expected_file)
+    func = functools.partial(_check, name, result_file, expected_file)
     success, result = topotest.run_and_expect(func, None, count=10, wait=0.5)
     assert result is None, "Failed"
 
@@ -105,6 +125,6 @@ def test_zebra_dplane_fpm_pb():
     tgen = get_topogen()
     if tgen.routers_have_failure():
         pytest.skip(tgen.errors)
-    
-    assert True
+
+    check_rib("r1", "output.json", "r1/ref.json")
     
